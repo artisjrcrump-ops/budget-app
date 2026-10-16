@@ -44,6 +44,7 @@ export function shiftsFromCsv(text) {
   const get = (r, h) => (idx[h] >= 0 ? r[idx[h]] ?? '' : '');
   return rows.map((r) => ({
     date: isoDate(get(r, 'Shift Date')),
+    role: /train/i.test(get(r, 'Position')) ? 'Trainer' : 'Server',
     period: get(r, 'Shift period') || 'Night',
     start: get(r, 'Start Time'),
     end: get(r, 'End Time'),
@@ -61,7 +62,7 @@ export function shiftsToCsv(shifts) {
   const $ = (n) => `$${n.toFixed(2)}`;
   const lines = [CSV_HEADER.join(',')];
   for (const s of shifts) {
-    lines.push([usDate(s.date), 'Default Job', 'New Position', s.period, s.start, s.end,
+    lines.push([usDate(s.date), 'Default Job', s.role || 'Server', s.period, s.start, s.end,
       $(s.hourly), $(s.cash), $(s.credit), $(s.tipout)].map((v) => q(String(v))).join(','));
   }
   return lines.join('\n') + '\n';
