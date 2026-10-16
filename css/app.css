@@ -128,3 +128,11 @@ nav [aria-current="page"] { color: var(--accent); }
 .check.on { background: var(--accent); border-color: var(--accent); }
 .list li.done .stack { opacity: .55; }
 .form input[type="text"] { text-align: right; width: 60%; }
+.paycheck {
+  display: grid; width: 100%; margin: 4px 0 4px; padding: 14px 16px; border-radius: 14px;
+  background: var(--accent); color: #fff; text-align: left; grid-template-columns: 1fr auto; align-items: baseline;
+}
+.paycheck > span:first-child { font-weight: 600; }
+.paycheck strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+.paycheck .sub { grid-column: 1 / -1; color: rgba(255, 255, 255, .85); }
+@media (prefers-color-scheme: dark) { .paycheck { color: #0b1f0c; } .paycheck .sub { color: rgba(0, 0, 0, .7); } }

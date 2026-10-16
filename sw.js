@@ -1,5 +1,5 @@
 // Offline support: serve the app shell from cache, refresh it in the background.
-const CACHE = 'budget-v2';
+const CACHE = 'budget-v3';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/store.js', 'js/calc.js', 'js/tax.js', 'js/csv.js', 'js/ui.js', 'js/money.js', 'js/budget.js',
   'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png'];
 

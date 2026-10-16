@@ -12,6 +12,7 @@ const DEFAULTS = {
     nyc: true,
     cashDeclared: 1, // share of cash tips reported to payroll
     otherDeductions: 4.90, // per check, after tax
+    wage: 11.35, // hourly wage, used to fill in hourly pay from shift hours
   },
 };
 

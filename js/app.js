@@ -44,6 +44,11 @@ function renderHome() {
       <button class="icon" data-week="7" aria-label="Next week">›</button>
     </header>
     <div class="week-tools"><button class="link" data-tab-go="settings">Settings</button></div>
+    <button class="paycheck" data-open="withholding">
+      <span>Estimated paycheck</span>
+      <strong>${money(wk.check)}</strong>
+      <span class="sub">for ${fmtDay(start, { month: 'numeric', day: 'numeric' })} to ${fmtDay(wk.end, { month: 'numeric', day: 'numeric' })} · tap for details</span>
+    </button>
     <section class="days">${days}</section>
     <ul class="stats">
       ${row('Total this week', money(wk.net))}
@@ -128,6 +133,8 @@ function renderSettings() {
         <select data-setting="weekStart">
           ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((l, v) => `<option value="${v}" ${settings.weekStart === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select></li>
+      <li><span>Hourly wage</span>
+        <span class="suffix">$<input type="number" inputmode="decimal" step="0.01" min="0" data-setting="wage" value="${settings.wage}"></span></li>
       <li><span>New York City resident</span><input type="checkbox" data-setting="nyc" ${settings.nyc ? 'checked' : ''}></li>
       <li><span>Cash tips declared</span>
         <span class="suffix"><input type="number" inputmode="numeric" min="0" max="100" data-setting="cashDeclared" value="${Math.round(settings.cashDeclared * 100)}">%</span></li>
@@ -216,7 +223,15 @@ function openShift(s) {
   });
 
   const form = $('#sheet form');
+  const hourlyInput = form.elements.hourly;
+  // New shifts fill hourly pay from hours x wage until it is typed over.
+  let autoHourly = !s.id;
+  hourlyInput.addEventListener('input', () => { autoHourly = false; });
   const live = () => {
+    if (autoHourly) {
+      const hrs = shiftHours({ start: form.elements.start.value, end: form.elements.end.value });
+      hourlyInput.value = (hrs * store.get().settings.wage).toFixed(2);
+    }
     const d = new FormData(form);
     const x = { hourly: +d.get('hourly') || 0, cash: +d.get('cash') || 0, credit: +d.get('credit') || 0,
       tipout: +d.get('tipout') || 0, start: d.get('start'), end: d.get('end') };
@@ -253,7 +268,7 @@ function openWithholding(wk) {
     <ul class="stats">
       <li><span>Pay through payroll</span><strong>${money(wk.taxable)}</strong></li>
       ${Object.entries(wk.withholding.lines).filter(([, v]) => v).map(([k, v]) => `<li><span>${labels[k]}</span><strong>-${money(v)}</strong></li>`).join('')}
-      <li class="highlight"><span>Estimated check</span><strong>${money(wk.taxable - wk.withholding.total - wk.cash * settings.cashDeclared)}</strong></li>
+      <li class="highlight"><span>Estimated check</span><strong>${money(wk.check)}</strong></li>
     </ul>
     <p class="note">Payroll counts your credit tips after tip-out, hourly pay and declared cash tips. Declared cash is already in your pocket, so it is taken back out of the check.</p>
     ${rate ? `<p class="note">At this week's pay, about ${Math.round(rate * 100)}¢ of each extra dollar goes to taxes. Only the dollars above each bracket line are taxed at the higher rate.</p>` : ''}`);

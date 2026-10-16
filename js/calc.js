@@ -52,6 +52,8 @@ export function weekSummary(shifts, startIso, settings) {
   return {
     start: startIso, end: endIso, shifts: inWeek, net, cash, hours, taxable,
     withholding, takeHome: net - withholding.total,
+    // The deposited check: payroll pay minus withholding, minus declared cash already in hand.
+    check: inWeek.length ? taxable - withholding.total - cash * settings.cashDeclared : 0,
     perHour: hours ? net / hours : 0,
   };
 }
