@@ -9,7 +9,7 @@ const sample = `Shift Date,Job,Position,Shift period,Start Time,End Time,Hourly 
 
 test('parses quoted money with commas', () => {
   const [s] = shiftsFromCsv(sample);
-  assert.deepEqual(s, { date: '2026-10-15', period: 'Night', start: '16:00', end: '00:00',
+  assert.deepEqual(s, { date: '2026-10-15', role: 'Server', period: 'Night', start: '16:00', end: '00:00',
     hourly: 90.8, cash: 0, credit: 1192.02, tipout: 333.77, note: '' });
 });
 
@@ -24,4 +24,9 @@ test('imports a full tip tracker export', { skip: !real || !existsSync(real) }, 
   const shifts = shiftsFromCsv(readFileSync(real, 'utf8'));
   assert.ok(shifts.length > 0);
   assert.ok(shifts.every((s) => /^\d{4}-\d{2}-\d{2}$/.test(s.date)));
+});
+
+test('reads a trainer shift from the Position column', () => {
+  const [s] = shiftsFromCsv(sample.replace('New Position', 'Trainer'));
+  assert.equal(s.role, 'Trainer');
 });

@@ -96,7 +96,7 @@ function renderShifts() {
         <span>${money(sum(list, shiftNet), false)} · ${list.length} shifts</span></h2>
       <ul class="list">${list.map((s) => `
         <li class="tap" data-id="${s.id}">
-          <span>${fmtDay(s.date, { weekday: 'short', month: 'short', day: 'numeric' })} <em>${esc(s.period)}</em></span>
+          <span>${fmtDay(s.date, { weekday: 'short', month: 'short', day: 'numeric' })} <em>${esc(s.period)}${s.role === 'Trainer' ? ' · Trainer' : ''}</em></span>
           <strong>${money(shiftNet(s))}</strong>
         </li>`).join('')}</ul>`).join('')}
     ${byMonth.size > ui.shiftsShown ? '<button class="wide" data-more>Show older months</button>' : ''}
@@ -133,8 +133,10 @@ function renderSettings() {
         <select data-setting="weekStart">
           ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((l, v) => `<option value="${v}" ${settings.weekStart === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select></li>
-      <li><span>Hourly wage</span>
+      <li><span>Server hourly wage</span>
         <span class="suffix">$<input type="number" inputmode="decimal" step="0.01" min="0" data-setting="wage" value="${settings.wage}"></span></li>
+      <li><span>Trainer hourly wage</span>
+        <span class="suffix">$<input type="number" inputmode="decimal" step="0.01" min="0" data-setting="trainerWage" value="${settings.trainerWage}"></span></li>
       <li><span>New York City resident</span><input type="checkbox" data-setting="nyc" ${settings.nyc ? 'checked' : ''}></li>
       <li><span>Cash tips declared</span>
         <span class="suffix"><input type="number" inputmode="numeric" min="0" max="100" data-setting="cashDeclared" value="${Math.round(settings.cashDeclared * 100)}">%</span></li>
@@ -195,6 +197,7 @@ function openShift(s) {
       </header>
       <ul class="list form">
         <li><span>Date</span><input type="date" name="date" value="${esc(f('date'))}" required></li>
+        <li><span>Role</span><select name="role">${['Server', 'Trainer'].map((r) => `<option ${(f('role') || 'Server') === r ? 'selected' : ''}>${r}</option>`).join('')}</select></li>
         <li><span>Shift</span><select name="period">${['Night', 'Day'].map((p) => `<option ${f('period') === p ? 'selected' : ''}>${p}</option>`).join('')}</select></li>
         <li><span>Start</span><input type="time" name="start" value="${esc(f('start') || '16:00')}"></li>
         <li><span>End</span><input type="time" name="end" value="${esc(f('end') || '23:00')}"></li>
@@ -216,7 +219,7 @@ function openShift(s) {
   (data) => {
     const n = (k) => Number(data.get(k)) || 0;
     store.saveShift({
-      ...s, date: data.get('date'), period: data.get('period'), start: data.get('start'), end: data.get('end'),
+      ...s, date: data.get('date'), role: data.get('role'), period: data.get('period'), start: data.get('start'), end: data.get('end'),
       credit: n('credit'), cash: n('cash'), tipout: n('tipout'), hourly: n('hourly'), note: s.note ?? '',
     });
     closeSheet();
@@ -224,20 +227,23 @@ function openShift(s) {
 
   const form = $('#sheet form');
   const hourlyInput = form.elements.hourly;
-  // New shifts fill hourly pay from hours x wage until it is typed over.
+  // Hourly pay fills from hours x the role's wage until it is typed over;
+  // changing the role or times fills it again.
   let autoHourly = !s.id;
   hourlyInput.addEventListener('input', () => { autoHourly = false; });
-  const live = () => {
+  form.addEventListener('change', (e) => { if (['role', 'start', 'end'].includes(e.target.name)) { autoHourly = true; live(); } });
+  function live() {
     if (autoHourly) {
+      const { wage, trainerWage } = store.get().settings;
       const hrs = shiftHours({ start: form.elements.start.value, end: form.elements.end.value });
-      hourlyInput.value = (hrs * store.get().settings.wage).toFixed(2);
+      hourlyInput.value = (hrs * (form.elements.role.value === 'Trainer' ? trainerWage : wage)).toFixed(2);
     }
     const d = new FormData(form);
     const x = { hourly: +d.get('hourly') || 0, cash: +d.get('cash') || 0, credit: +d.get('credit') || 0,
       tipout: +d.get('tipout') || 0, start: d.get('start'), end: d.get('end') };
     const net = shiftNet(x), hrs = shiftHours(x);
     $('#live').textContent = `Net ${money(net)}${hrs ? ` · ${money(net / hrs)}/hr over ${hrs.toFixed(1)} hr` : ''}`;
-  };
+  }
   form.oninput = live;
   live();
 }
@@ -245,7 +251,7 @@ function openShift(s) {
 function openDay(iso, list) {
   openSheet(`
     <header class="sheet-head"><span></span><h2>${fmtDay(iso, { weekday: 'long', month: 'short', day: 'numeric' })}</h2><button class="link" data-close>Done</button></header>
-    <ul class="list">${list.map((s) => `<li class="tap" data-id="${s.id}"><span>${esc(s.period)} ${esc(s.start)}–${esc(s.end)}</span><strong>${money(shiftNet(s))}</strong></li>`).join('')}
+    <ul class="list">${list.map((s) => `<li class="tap" data-id="${s.id}"><span>${esc(s.period)}${s.role === 'Trainer' ? ' trainer' : ''} ${esc(s.start)}–${esc(s.end)}</span><strong>${money(shiftNet(s))}</strong></li>`).join('')}
       <li class="tap" data-new><span>Add another shift</span><strong>+</strong></li></ul>`,
   (e) => {
     const t = e.target.closest('[data-id], [data-new]');
