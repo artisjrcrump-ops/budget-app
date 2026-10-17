@@ -14,6 +14,9 @@ const DEFAULTS = {
     otherDeductions: 4.90, // per check, after tax
     wage: 11.35, // server hourly wage, used to fill in hourly pay from shift hours
     trainerWage: 17.00, // hourly wage on shifts spent training someone
+    payday: 5, // weekday the check lands; a pay week is paid on the first payday after it ends
+    balance: 0, // bank plus cash on hand, as of balanceDate
+    balanceDate: null,
   },
 };
 

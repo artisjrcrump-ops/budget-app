@@ -1,6 +1,6 @@
 // Offline support: serve the app shell from cache, refresh it in the background.
-const CACHE = 'budget-v4';
-const SHELL = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/store.js', 'js/calc.js', 'js/tax.js', 'js/csv.js', 'js/ui.js', 'js/money.js', 'js/budget.js',
+const CACHE = 'budget-v6';
+const SHELL = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/store.js', 'js/calc.js', 'js/tax.js', 'js/csv.js', 'js/ui.js', 'js/money.js', 'js/budget.js', 'js/cashflow.js',
   'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
