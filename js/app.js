@@ -207,13 +207,6 @@ function download(name, text, type) {
 // ---------- Sheets ----------
 
 function openShift(s) {
-  // A new shift starts from your most recent shift on the same weekday, or your last shift.
-  if (!s.id) {
-    const past = [...store.get().shifts].sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
-    const dow = parseDate(s.date).getDay();
-    const like = past.find((x) => parseDate(x.date).getDay() === dow) ?? past[0];
-    if (like) s = { role: like.role, period: like.period, start: like.start, end: like.end, ...s };
-  }
   const f = (k) => (s[k] ?? '');
   const num = (k) => (s[k] ? s[k] : '');
   openSheet(`
@@ -274,8 +267,6 @@ function openShift(s) {
   }
   form.oninput = live;
   live();
-  // Jump straight to the tips so the number pad opens.
-  if (!s.id) form.elements.credit.focus();
 }
 
 function openDay(iso, list) {
