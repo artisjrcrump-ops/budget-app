@@ -7,6 +7,7 @@ import {
 
 import { $, esc, openSheet, closeSheet, armDelete } from './ui.js';
 import { renderBills, renderBudget, renderGoals } from './money.js';
+import { cashflow } from './cashflow.js';
 const fmtDay = (iso, opts) => parseDate(iso).toLocaleDateString('en-US', opts);
 
 const view = $('#view');
@@ -36,6 +37,7 @@ function renderHome() {
     </button>`;
   }).join('');
 
+  const flow = cashflow(store.get(), today());
   const row = (label, value, attrs = '') => `<li ${attrs}><span>${label}</span><strong>${value}</strong></li>`;
   view.innerHTML = `
     <header class="bar">
@@ -49,6 +51,7 @@ function renderHome() {
       <strong>${money(wk.check)}</strong>
       <span class="sub">for ${fmtDay(start, { month: 'numeric', day: 'numeric' })} to ${fmtDay(wk.end, { month: 'numeric', day: 'numeric' })} · tap for details</span>
     </button>
+    ${safeCard(flow)}
     <section class="days">${days}</section>
     <ul class="stats">
       ${row('Total this week', money(wk.net))}
@@ -75,7 +78,21 @@ function renderHome() {
       else openShift({ date: t.dataset.day });
     }
     if (t.dataset.open === 'withholding') openWithholding(wk);
+    if (t.dataset.open === 'cashflow') openCashflow();
   };
+}
+
+function safeCard(flow) {
+  if (!flow) {
+    return `<button class="safe" data-open="cashflow"><span>Safe to spend</span><strong>Set up</strong>
+      <span class="sub">Enter what's in your bank and wallet to see what you can spend before payday</span></button>`;
+  }
+  const short = flow.short && flow.short.date >= flow.nextPayday;
+  return `<button class="safe ${flow.safe < 0 ? 'negative' : ''}" data-open="cashflow">
+    <span>Safe to spend until ${fmtDay(flow.nextPayday, { weekday: 'long' })}</span>
+    <strong>${money(flow.safe)}</strong>
+    <span class="sub">${flow.safe < 0 ? 'Bills due before payday are more than you have' : 'after bills due before payday'}${short ? ` · short on ${fmtDay(flow.short.date, { month: 'numeric', day: 'numeric' })}` : ''} · tap for timeline</span>
+  </button>`;
 }
 
 // ---------- Shifts list ----------
@@ -132,6 +149,10 @@ function renderSettings() {
       <li><span>Week starts on</span>
         <select data-setting="weekStart">
           ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((l, v) => `<option value="${v}" ${settings.weekStart === v ? 'selected' : ''}>${l}</option>`).join('')}
+        </select></li>
+      <li><span>Paycheck arrives on</span>
+        <select data-setting="payday">
+          ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((l, v) => `<option value="${v}" ${settings.payday === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select></li>
       <li><span>Server hourly wage</span>
         <span class="suffix">$<input type="number" inputmode="decimal" step="0.01" min="0" data-setting="wage" value="${settings.wage}"></span></li>
@@ -258,6 +279,38 @@ function openDay(iso, list) {
     if (!t) return;
     if (t.dataset.id) openShift(list.find((s) => s.id === t.dataset.id));
     else openShift({ date: iso });
+  });
+}
+
+function openCashflow() {
+  const { settings } = store.get();
+  const flow = cashflow(store.get(), today());
+  const short = (d) => fmtDay(d, { month: 'numeric', day: 'numeric' });
+  const rows = (flow?.events ?? []).filter((e) => e.date > today() || e.kind === 'cash').map((e) => `
+    <li class="${e.balance < 0 ? 'short' : ''}"><span class="stack">${esc(e.label)}${e.kind === 'pay' ? ` for ${short(e.week)}–${short(addDays(e.week, 6))}` : ''}
+      <span class="sub">${fmtDay(e.date, { weekday: 'short', month: 'short', day: 'numeric' })}${e.estimate ? ' · estimate' : ''} · leaves ${money(e.balance)}</span></span>
+      <strong class="${e.amount > 0 ? 'in' : ''}">${e.amount > 0 ? '+' : ''}${money(e.amount)}</strong></li>`).join('');
+  openSheet(`
+    <form>
+      <header class="sheet-head"><span></span><h2>Money ahead</h2><button type="button" class="link" data-close>Done</button></header>
+      <ul class="list form">
+        <li><span class="stack">Bank + cash right now<span class="sub">${settings.balanceDate ? `Last set ${fmtDay(settings.balanceDate, { month: 'short', day: 'numeric' })}` : 'Not set yet'}</span></span>
+          <span class="suffix">$<input name="balance" type="number" inputmode="decimal" step="0.01" value="${settings.balanceDate ? settings.balance : ''}" placeholder="0" required></span></li>
+      </ul>
+      <button class="wide">Update balance</button>
+    </form>
+    ${flow ? `
+      <ul class="stats">
+        <li><span>In hand now (estimated)</span><strong>${money(flow.now)}</strong></li>
+        <li class="highlight"><span>Safe to spend until ${fmtDay(flow.nextPayday, { weekday: 'long' })}</span><strong>${money(flow.safe)}</strong></li>
+      </ul>
+      <h2 class="group">Next 5 weeks</h2>
+      <ul class="list">${rows || '<li><span>No paychecks or bills coming up.</span></li>'}</ul>
+      <p class="note">Checks for weeks you haven't finished count at least ${money(flow.cautious, false)}, the average of your 3 smallest checks lately. Cash tips from future shifts and yearly bills aren't counted. Update your balance every few days, and after you pay a bill.</p>` : ''}`,
+  null,
+  (d) => {
+    store.updateSettings({ balance: Number(d.get('balance')) || 0, balanceDate: today() });
+    openCashflow();
   });
 }
 
