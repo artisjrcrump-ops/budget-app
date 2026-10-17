@@ -301,4 +301,4 @@ $('nav').onclick = (e) => {
 store.subscribe(() => { if (ui.tab !== 'settings') render(); });
 render();
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
