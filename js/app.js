@@ -159,6 +159,8 @@ function renderSettings() {
       <li><span>Trainer hourly wage</span>
         <span class="suffix">$<input type="number" inputmode="decimal" step="0.01" min="0" data-setting="trainerWage" value="${settings.trainerWage}"></span></li>
       <li><span>New York City resident</span><input type="checkbox" data-setting="nyc" ${settings.nyc ? 'checked' : ''}></li>
+      <li><span>Tip-out</span>
+        <span class="suffix"><input type="number" inputmode="decimal" step="0.1" min="0" max="100" data-setting="tipoutRate" value="${+(settings.tipoutRate * 100).toFixed(2)}">%</span></li>
       <li><span>Cash tips declared</span>
         <span class="suffix"><input type="number" inputmode="numeric" min="0" max="100" data-setting="cashDeclared" value="${Math.round(settings.cashDeclared * 100)}">%</span></li>
       <li><span>Other deductions per check</span>
@@ -185,7 +187,7 @@ function renderSettings() {
       } else if (t.dataset.setting) {
         const k = t.dataset.setting;
         const v = k === 'nyc' ? t.checked
-          : k === 'cashDeclared' ? Math.min(100, Math.max(0, Number(t.value))) / 100
+          : k === 'cashDeclared' || k === 'tipoutRate' ? Math.min(100, Math.max(0, Number(t.value))) / 100
           : Number(t.value);
         store.updateSettings({ [k]: v });
         if (k === 'weekStart') ui.weekOf = null;
@@ -248,12 +250,23 @@ function openShift(s) {
 
   const form = $('#sheet form');
   const hourlyInput = form.elements.hourly;
+  const tipoutInput = form.elements.tipout;
+  const { tipoutRate } = store.get().settings;
+  const tipoutFor = (credit, cash) => Math.round((credit + cash) * tipoutRate * 100) / 100;
+  // Tip-out fills from credit plus cash tips at the house rate until it is typed over.
+  // An existing shift keeps updating only if its tip-out already matches the rate.
+  let autoTipout = !s.id || Math.abs((s.tipout || 0) - tipoutFor(s.credit || 0, s.cash || 0)) < 0.01;
+  tipoutInput.addEventListener('input', () => { autoTipout = false; });
   // Hourly pay fills from hours x the role's wage until it is typed over;
   // changing the role or times fills it again.
   let autoHourly = !s.id;
   hourlyInput.addEventListener('input', () => { autoHourly = false; });
   form.addEventListener('change', (e) => { if (['role', 'start', 'end'].includes(e.target.name)) { autoHourly = true; live(); } });
   function live() {
+    if (autoTipout) {
+      const t = tipoutFor(+form.elements.credit.value || 0, +form.elements.cash.value || 0);
+      tipoutInput.value = t ? t.toFixed(2) : '';
+    }
     if (autoHourly) {
       const { wage, trainerWage } = store.get().settings;
       const hrs = shiftHours({ start: form.elements.start.value, end: form.elements.end.value });
