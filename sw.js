@@ -1,6 +1,6 @@
 // Offline support: always try the network first so new versions show on the next open,
 // and fall back to the cached copy when there is no signal.
-const CACHE = 'budget-v7';
+const CACHE = 'budget-v8';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/store.js', 'js/calc.js', 'js/tax.js', 'js/csv.js', 'js/ui.js', 'js/money.js', 'js/budget.js', 'js/cashflow.js',
   'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png'];
 

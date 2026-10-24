@@ -232,6 +232,8 @@ function openShift(s) {
         <li><span>Hourly pay</span><span class="suffix">$<input name="hourly" type="number" inputmode="decimal" step="0.01" min="0" value="${num('hourly')}" placeholder="0"></span></li>
       </ul>
       <p class="live" id="live"></p>
+      <h2 class="group" id="checkout-head">Checkout sheet</h2>
+      <ul class="stats" id="checkout"></ul>
       ${s.id ? '<button type="button" class="wide danger" data-delete>Delete shift</button>' : ''}
     </form>`,
   (e) => {
@@ -277,6 +279,17 @@ function openShift(s) {
       tipout: +d.get('tipout') || 0, start: d.get('start'), end: d.get('end') };
     const net = shiftNet(x), hrs = shiftHours(x);
     $('#live').textContent = `Net ${money(net)}${hrs ? ` · ${money(net / hrs)}/hr over ${hrs.toFixed(1)} hr` : ''}`;
+    // The same lines, in the same order, as the restaurant's nightly checkout sheet.
+    const total = x.credit + x.cash;
+    $('#checkout-head').hidden = $('#checkout').hidden = !total;
+    $('#checkout').innerHTML = [
+      ['Net c/c tips', money(x.credit)],
+      ['+ Cash tips', money(x.cash)],
+      ['= Total tips', money(total)],
+      [`− ${+(tipoutRate * 100).toFixed(2)}% tip-out`, money(x.tipout)],
+      ['= Claimed tips', money(total - x.tipout)],
+      ['On paycheck <span class="sub">charge tips − tip-out</span>', money(x.credit - x.tipout), 'highlight'],
+    ].map(([l, v, c]) => `<li class="${c ?? ''}"><span>${l}</span><strong>${v}</strong></li>`).join('');
   }
   form.oninput = live;
   live();
