@@ -18,6 +18,7 @@ const DEFAULTS = {
     payday: 5, // weekday the check lands; a pay week is paid on the first payday after it ends
     balance: 0, // bank plus cash on hand, as of balanceDate
     balanceDate: null,
+    balanceAt: null, // when the balance was entered, to tell same-day shifts apart
   },
 };
 
@@ -52,7 +53,7 @@ export const store = {
 
   saveShift(shift) {
     if (shift.id) state.shifts = state.shifts.map((s) => (s.id === shift.id ? shift : s));
-    else state.shifts.push({ ...shift, id: newId() });
+    else state.shifts.push({ ...shift, id: newId(), createdAt: Date.now() });
     save();
   },
   deleteShift(id) {
