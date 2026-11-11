@@ -38,6 +38,8 @@ function renderHome() {
   }).join('');
 
   const flow = cashflow(store.get(), today());
+  // Payroll withholds on the whole week's pay, so an unfinished week's estimate is only what's logged so far.
+  const soFar = wk.end >= today() ? ' so far' : '';
   const row = (label, value, attrs = '') => `<li ${attrs}><span>${label}</span><strong>${value}</strong></li>`;
   view.innerHTML = `
     <header class="bar">
@@ -49,13 +51,13 @@ function renderHome() {
     <button class="paycheck" data-open="withholding">
       <span>Estimated paycheck</span>
       <strong>${money(wk.check)}</strong>
-      <span class="sub">for ${fmtDay(start, { month: 'numeric', day: 'numeric' })} to ${fmtDay(wk.end, { month: 'numeric', day: 'numeric' })} · tap for details</span>
+      <span class="sub">${soFar ? 'so far, ' : ''}for ${fmtDay(start, { month: 'numeric', day: 'numeric' })} to ${fmtDay(wk.end, { month: 'numeric', day: 'numeric' })} · tap for details</span>
     </button>
     ${safeCard(flow)}
     <section class="days">${days}</section>
     <ul class="stats">
       ${row('Total this week', money(wk.net))}
-      ${row('Estimated taxes', money(wk.withholding.total) + ' ›', 'class="tap" data-open="withholding"')}
+      ${row(`Taxes & deductions${soFar}`, money(wk.withholding.total) + ' ›', 'class="tap" data-open="withholding"')}
       ${row('Estimated take-home', money(wk.takeHome), 'class="highlight"')}
       ${row('Cash this week', money(wk.cash))}
       ${row('Hours worked', `${Math.floor(wk.hours)} hr ${Math.round((wk.hours % 1) * 60)} min`)}
@@ -349,15 +351,18 @@ function openWithholding(wk) {
     disability: 'NY disability', other: 'Other deductions',
   };
   const { settings } = store.get();
+  const cashBack = wk.cash * settings.cashDeclared;
   const rate = wk.shifts.length ? marginalRate(wk.taxable, { nyc: settings.nyc }) : 0;
   openSheet(`
     <header class="sheet-head"><span></span><h2>Estimated paycheck</h2><button class="link" data-close>Done</button></header>
     <ul class="stats">
       <li><span>Pay through payroll</span><strong>${money(wk.taxable)}</strong></li>
       ${Object.entries(wk.withholding.lines).filter(([, v]) => v).map(([k, v]) => `<li><span>${labels[k]}</span><strong>-${money(v)}</strong></li>`).join('')}
+      ${cashBack ? `<li><span>Cash tips already in your pocket</span><strong>-${money(cashBack)}</strong></li>` : ''}
       <li class="highlight"><span>Estimated check</span><strong>${money(wk.check)}</strong></li>
     </ul>
-    <p class="note">Payroll counts your credit tips after tip-out, hourly pay and declared cash tips. Declared cash is already in your pocket, so it is taken back out of the check.</p>
+    <p class="note">Payroll counts your hourly pay, credit tips after tip-out and declared cash tips, and withholds taxes on all of it. You already have the cash, so it comes back out of the check.</p>
+    ${wk.end >= today() ? '<p class="note">This week isn\'t over yet. Taxes are figured on the whole week\'s pay, so they will go up as you log more shifts.</p>' : ''}
     ${rate ? `<p class="note">At this week's pay, about ${Math.round(rate * 100)}¢ of each extra dollar goes to taxes. Only the dollars above each bracket line are taxed at the higher rate.</p>` : ''}`);
 }
 
