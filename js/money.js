@@ -98,6 +98,7 @@ function openBill(b) {
 
 // ---------- Budget ----------
 
+const SAFE_EMPTY = 'Safe monthly income stays at $0 until you have at least one full month of shifts before this one. It fills in when this month ends, or right away if you import your old tip tracker file in Settings.';
 const SUGGESTED = ['Groceries', 'Eating out', 'Transit', 'Personal'];
 
 export function renderBudget(view) {
@@ -127,6 +128,7 @@ export function renderBudget(view) {
       <li><span>Savings goals</span><strong>-${money(goalTotal, false)}</strong></li>
       <li class="highlight"><span>Taken home in ${fmt(now, { month: 'long' })} so far</span><strong>${money(soFar, false)}</strong></li>
     </ul>
+    ${safe ? '' : `<p class="note">${SAFE_EMPTY}</p>`}
     <h2 class="group">Spending this month</h2>
     <ul class="list">${categories.map((c) => {
       const spent = spentThisMonth(c, month);
@@ -153,7 +155,8 @@ export function renderBudget(view) {
 function openSafeInfo(safe) {
   openSheet(`
     <header class="sheet-head"><span></span><h2>Safe monthly income</h2><button class="link" data-close>Done</button></header>
-    <p class="note">${money(safe, false)} is the average take-home of your 3 slowest months out of the last 12, after estimated taxes. Planning on a slow month means a good month leaves extra instead of a slow month leaving you short.</p>`);
+    ${safe ? '' : `<p class="note">${SAFE_EMPTY}</p>`}
+    <p class="note">${safe ? money(safe, false) : 'It'} is the average take-home of your 3 slowest months out of the last 12, after estimated taxes. Planning on a slow month means a good month leaves extra instead of a slow month leaving you short.</p>`);
 }
 
 function openCategory(c) {
