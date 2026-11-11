@@ -29,9 +29,12 @@ export function cashflow({ shifts, bills, settings }, todayIso, weeks = 5) {
   const until = addDays(todayIso, weeks * 7);
   const events = [];
 
-  // Cash tips from shifts after the balance was set are already in hand.
-  const cash = sum(shifts.filter((s) => s.date > from && s.date <= todayIso), (s) => s.cash);
-  if (cash) events.push({ date: todayIso, kind: 'cash', label: 'Cash tips since your balance', amount: cash });
+  // Cash tips from shifts after the balance was set add to it. A shift on the same day
+  // counts only if it was logged after the balance was entered.
+  const after = (s) => s.date > from || (s.date === from && (s.createdAt ?? 0) > (settings.balanceAt ?? Infinity));
+  for (const s of shifts) {
+    if (s.cash && after(s) && s.date <= todayIso) events.push({ date: s.date, kind: 'cash', label: 'Cash tips', amount: s.cash });
+  }
 
   const cautious = cautiousCheck(shifts, settings, todayIso);
   const paydays = [];

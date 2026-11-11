@@ -36,3 +36,19 @@ test('bills marked paid are left out', () => {
 test('no balance means no timeline yet', () => {
   assert.equal(cashflow({ shifts: [], bills: [], settings }, '2026-10-17'), null);
 });
+
+test('cash from a shift logged after the balance on the same day is added', () => {
+  const s = { ...settings, balance: 100, balanceDate: '2026-10-17', balanceAt: 1000 };
+  const before = { ...shift('2026-10-17', 0, 40), createdAt: 500 };
+  const after = { ...shift('2026-10-17', 0, 60), createdAt: 2000 };
+  const flow = cashflow({ shifts: [before, after], bills: [], settings: s }, '2026-10-17');
+  assert.equal(flow.now, 160);
+});
+
+test('a paycheck that has landed adds to the balance', () => {
+  const shifts = [shift('2026-10-13', 300)];
+  const flow = cashflow({ shifts, bills: [], settings: { ...settings, balance: 100, balanceDate: '2026-10-19' } }, '2026-10-23');
+  const pay = flow.events.find((e) => e.kind === 'pay' && e.date === '2026-10-23');
+  assert.ok(pay.amount > 0);
+  assert.equal(flow.now, 100 + pay.amount);
+});

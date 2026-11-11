@@ -91,7 +91,7 @@ function safeCard(flow) {
   return `<button class="safe ${flow.safe < 0 ? 'negative' : ''}" data-open="cashflow">
     <span>Safe to spend until ${fmtDay(flow.nextPayday, { weekday: 'long' })}</span>
     <strong>${money(flow.safe)}</strong>
-    <span class="sub">${flow.safe < 0 ? 'Bills due before payday are more than you have' : 'after bills due before payday'}${short ? ` · short on ${fmtDay(flow.short.date, { month: 'numeric', day: 'numeric' })}` : ''} · tap for timeline</span>
+    <span class="sub">${money(flow.now)} in bank + cash · ${flow.safe < 0 ? 'bills due before payday are more than you have' : 'after bills due before payday'}${short ? ` · short on ${fmtDay(flow.short.date, { month: 'numeric', day: 'numeric' })}` : ''} · tap for timeline</span>
   </button>`;
 }
 
@@ -312,30 +312,32 @@ function openCashflow() {
   const { settings } = store.get();
   const flow = cashflow(store.get(), today());
   const short = (d) => fmtDay(d, { month: 'numeric', day: 'numeric' });
-  const rows = (flow?.events ?? []).filter((e) => e.date > today() || e.kind === 'cash').map((e) => `
+  const row = (e) => `
     <li class="${e.balance < 0 ? 'short' : ''}"><span class="stack">${esc(e.label)}${e.kind === 'pay' ? ` for ${short(e.week)}–${short(addDays(e.week, 6))}` : ''}
       <span class="sub">${fmtDay(e.date, { weekday: 'short', month: 'short', day: 'numeric' })}${e.estimate ? ' · estimate' : ''} · leaves ${money(e.balance)}</span></span>
-      <strong class="${e.amount > 0 ? 'in' : ''}">${e.amount > 0 ? '+' : ''}${money(e.amount)}</strong></li>`).join('');
+      <strong class="${e.amount > 0 ? 'in' : ''}">${e.amount > 0 ? '+' : ''}${money(e.amount)}</strong></li>`;
+  const past = (flow?.events ?? []).filter((e) => e.date <= today()).map(row).join('');
+  const rows = (flow?.events ?? []).filter((e) => e.date > today()).map(row).join('');
   openSheet(`
     <form>
       <header class="sheet-head"><span></span><h2>Money ahead</h2><button type="button" class="link" data-close>Done</button></header>
       <ul class="list form">
-        <li><span class="stack">Bank + cash right now<span class="sub">${settings.balanceDate ? `Last set ${fmtDay(settings.balanceDate, { month: 'short', day: 'numeric' })}` : 'Not set yet'}</span></span>
-          <span class="suffix">$<input name="balance" type="number" inputmode="decimal" step="0.01" value="${settings.balanceDate ? settings.balance : ''}" placeholder="0" required></span></li>
+        <li><span class="stack">Bank + cash right now<span class="sub">${flow ? `You entered ${money(settings.balance)} on ${fmtDay(settings.balanceDate, { month: 'short', day: 'numeric' })}. Cash tips, paychecks and bills since then are added in.` : 'Not set yet'}</span></span>
+          <span class="suffix">$<input name="balance" type="number" inputmode="decimal" step="0.01" value="${flow ? flow.now.toFixed(2) : ''}" placeholder="0" required></span></li>
       </ul>
-      <button class="wide">Update balance</button>
+      <button class="wide">${flow ? 'Correct it' : 'Save balance'}</button>
     </form>
     ${flow ? `
       <ul class="stats">
-        <li><span>In hand now (estimated)</span><strong>${money(flow.now)}</strong></li>
         <li class="highlight"><span>Safe to spend until ${fmtDay(flow.nextPayday, { weekday: 'long' })}</span><strong>${money(flow.safe)}</strong></li>
       </ul>
+      ${past ? `<h2 class="group">Since ${fmtDay(settings.balanceDate, { month: 'short', day: 'numeric' })}</h2><ul class="list">${past}</ul>` : ''}
       <h2 class="group">Next 5 weeks</h2>
       <ul class="list">${rows || '<li><span>No paychecks or bills coming up.</span></li>'}</ul>
-      <p class="note">Checks for weeks you haven't finished count at least ${money(flow.cautious, false)}, the average of your 3 smallest checks lately. Cash tips from future shifts and yearly bills aren't counted. Update your balance every few days, and after you pay a bill.</p>` : ''}`,
+      <p class="note">Checks for weeks you haven't finished count at least ${money(flow.cautious, false)}, the average of your 3 smallest checks lately. Cash tips from future shifts and yearly bills aren't counted. If the bank shows something different, type the real number above and tap Correct it.</p>` : ''}`,
   null,
   (d) => {
-    store.updateSettings({ balance: Number(d.get('balance')) || 0, balanceDate: today() });
+    store.updateSettings({ balance: Number(d.get('balance')) || 0, balanceDate: today(), balanceAt: Date.now() });
     openCashflow();
   });
 }
